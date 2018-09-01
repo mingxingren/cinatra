@@ -114,11 +114,14 @@ namespace cinatra {
 		}
 
 		void run() {
-		
-		        if (!fs::exists(static_dir_.data())) {
-			   fs::create_directory(static_dir_.data());
+			if (!fs::exists(public_root_path_.data())) {
+				fs::create_directory(public_root_path_.data());
 			}
-			
+
+			if (!fs::exists(static_dir_.data())) {
+				fs::create_directory(static_dir_.data());
+			}
+
 			io_service_pool_.run();
 		}
 
@@ -135,7 +138,7 @@ namespace cinatra {
 		}
 
 		void set_static_dir(std::string&& path) {
-			static_dir_ = std::move(path);
+			static_dir_ = public_root_path_+std::move(path)+"/";
 		}
 
 		const std::string& static_dir() const {
@@ -212,8 +215,8 @@ namespace cinatra {
 
 		void set_public_root_directory(const std::string& name)
         {
-        	if(name != ""){
-				public_root_path_ = name;
+        	if(!name.empty()){
+				public_root_path_ = "./"+name+"/";
         	}
         }
 
@@ -250,14 +253,13 @@ namespace cinatra {
 				switch (state) {
 					case cinatra::data_proc_state::data_begin:
 					{
-						std::string real_file_name = req.get_filename_from_path();
-						auto mime = req.get_mime(real_file_name);
-						std::string file_path_str = "";
-						if(real_file_name.find(public_root_path_)!=std::string::npos && real_file_name.size() > public_root_path_.size()){
-							file_path_str = "./"+public_root_path_+"/"+real_file_name.substr(public_root_path_.size());
+						std::string relatice_file_name = req.get_relative_filename();
+						auto mime = req.get_mime({ relatice_file_name.data(), relatice_file_name.length()});
+						if(relatice_file_name.find(public_root_path_) !=0){
+							relatice_file_name.clear();
 						}
 						
-						auto in = std::make_shared<std::ifstream>(file_path_str,std::ios_base::binary);
+						auto in = std::make_shared<std::ifstream>(relatice_file_name,std::ios_base::binary);
 						if (!in->is_open()) {
 							res.set_status_and_content(status_type::not_found,"");
 							return;
@@ -375,10 +377,10 @@ namespace cinatra {
 		long keep_alive_timeout_ = 60; //max request timeout 60s
 
 		http_router http_router_;
-		std::string static_dir_ = "./static/"; //default
+		std::string static_dir_ = "./public/static/"; //default
         std::string base_path_[2] = {"base_path","/"};
         std::time_t static_res_cache_max_age_ = 0;
-        std::string public_root_path_ = "public";
+        std::string public_root_path_ = "./public/";
 //		https_config ssl_cfg_;
 #ifdef CINATRA_ENABLE_SSL
 		boost::asio::ssl::context ctx_;
